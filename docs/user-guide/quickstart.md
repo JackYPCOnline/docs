@@ -33,6 +33,32 @@ Let's install those development packages too:
 pip install strands-agents-tools strands-agents-builder
 ```
 
+### Strands MCP Server (Optional)
+
+Strands also provides an MCP (Model Context Protocol) server that can assist you during development. This server gives AI coding assistants in your IDE access to Strands documentation, development prompts, and best practices. You can use it with MCP-compatible clients like Q Developer CLI, Cursor, Claude, Cline, and others to help you:
+
+- Develop custom tools and agents with guided prompts
+- Debug and troubleshoot your Strands implementations
+- Get quick answers about Strands concepts and patterns
+- Design multi-agent systems with Graph or Swarm patterns
+
+To use the MCP server, you'll need [uv](https://github.com/astral-sh/uv) installed on your system. You can install it by following the [official installation instructions](https://github.com/astral-sh/uv#installation).
+
+Once uv is installed, configure the MCP server with your preferred client. For example, to use with Q Developer CLI, add to `~/.aws/amazonq/mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "strands-agents": {
+      "command": "uvx",
+      "args": ["strands-agents-mcp-server"]
+    }
+  }
+}
+```
+
+See the [MCP server documentation](https://github.com/strands-agents/mcp-server) for setup instructions with other clients.
+
 ## Configuring Credentials
 
 Strands supports many different model providers. By default, agents use the Amazon Bedrock model provider with the Claude 4 model.
@@ -416,7 +442,9 @@ Strands Agents supports several other model providers beyond Amazon Bedrock:
 - **[Ollama](concepts/model-providers/ollama.md)** - Run models locally for privacy or offline use
 - **[OpenAI](concepts/model-providers/openai.md)** - Access to OpenAI or OpenAI-compatible models
 - **[Writer](concepts/model-providers/writer.md)** - Access to Palmyra models
-- **[Cohere](concepts/model-providers/cohere.md)** - Use Cohere models through an OpenAI compatible interface
+- **[Cohere <sup> community</sup>](../community/model-providers/cohere.md)** - Use Cohere models through an OpenAI compatible interface
+- **[CLOVA Studio<sup> community</sup>](../community/model-providers/clova-studio.md)** - Korean-optimized AI models from Naver Cloud Platform
+- **[FireworksAI<sup> community</sup>](../community/model-providers/fireworksai.md)** - Use FireworksAI models through an OpenAI compatible interface
 - **[Custom Providers](concepts/model-providers/custom_model_provider.md)** - Build your own provider for specialized needs
 
 ## Capturing Streamed Data & Events

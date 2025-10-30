@@ -148,7 +148,7 @@ asyncio.run(async_example())
 
 ### ToolContext
 
-Tools can access their execution context by setting `context=True` and including a `tool_context` parameter. The `ToolContext` provides access to the invoking agent and current tool use data:
+Tools can access their execution context by setting `context=True` and including a `tool_context` parameter. The [`ToolContext`](../../../api-reference/types.md#strands.types.tools.ToolContext) provides access to the invoking agent, current tool use data, and invocation state:
 
 ```python
 from strands import tool, Agent, ToolContext
@@ -161,14 +161,78 @@ def get_self_name(tool_context: ToolContext) -> str:
 def get_tool_use_id(tool_context: ToolContext) -> str:
     return f"Tool use is {tool_context.tool_use["toolUseId"]}"
 
-agent = Agent(tools=[get_self_name, get_tool_use_id], name="Best agent")
+@tool(context=True)
+def get_invocation_state(tool_context: ToolContext) -> str:
+    return f"Invocation state: {tool_context.invocation_state["custom_data"]}"
+
+agent = Agent(tools=[get_self_name, get_tool_use_id, get_invocation_state], name="Best agent")
+
 agent("What is your name?")
 agent("What is the tool use id?")
+agent("What is the invocation state?", custom_data="You're the best agent ;)")
 ```
+
+To use a different parameter name for ToolContext, specify the desired name as the value of the `@tool.context` argument:
+
+```python
+from strands import tool, Agent, ToolContext
+
+@tool(context="context")
+def get_self_name(context: ToolContext) -> str:
+    return f"The agent name is {context.agent.name}"
+
+agent = Agent(tools=[get_self_name], name="Best agent")
+
+agent("What is your name?")
+```
+
+#### Accessing Invocation State in Tools
+
+The `invocation_state` attribute in `ToolContext` provides access to data passed through the agent invocation. This is particularly useful for:
+
+1. **Request Context**: Access session IDs, user information, or request-specific data
+2. **Multi-Agent Shared State**: In [Graph](../multi-agent/graph.md) and [Swarm](../multi-agent/swarm.md) patterns, access state shared across all agents
+3. **Per-Invocation Overrides**: Override behavior or settings for specific requests
+
+```python
+from strands import tool, Agent, ToolContext
+import requests
+
+@tool(context=True)
+def api_call(query: str, tool_context: ToolContext) -> dict:
+    """Make an API call with user context.
+    
+    Args:
+        query: The search query to send to the API
+        tool_context: Context containing user information
+    """
+    user_id = tool_context.invocation_state.get("user_id")
+    
+    response = requests.get(
+        "https://api.example.com/search",
+        headers={"X-User-ID": user_id},
+        params={"q": query}
+    )
+    
+    return response.json()
+
+agent = Agent(tools=[api_call])
+result = agent("Get my profile data", user_id="user123")
+```
+
+##### Invocation State Compared To Other Approaches
+
+It's important to understand how invocation state compares to other approaches that impact tool execution:
+
+- **Tool Parameters**: Use for data that the LLM should reason about and provide based on the user's request. Examples include search queries, file paths, calculation inputs, or any data the agent needs to determine from context.
+
+- **Invocation State**: Use for context and configuration that should not appear in prompts but affects tool behavior. Best suited for parameters that can change between agent invocations. Examples include user IDs for personalization, session IDs, or user flags.
+
+- **[Class-based tools](#class-based-tools)**: Use for configuration that doesn't change between requests and requires initialization. Examples include API keys, database connection strings, service endpoints, or shared resources that need setup.
 
 ### Tool Streaming
 
-Async tools can yield intermediate results to provide real-time progress updates. Each yielded value becomes a streaming event (see [async iterators](../streaming/async-iterators.md) or [callback handlers](../streaming/callback-handlers.md) for more information), with the final value serving as the tool's return result:
+Async tools can yield intermediate results to provide real-time progress updates. Each yielded value becomes a [streaming event](../streaming/overview.md), with the final value serving as the tool's return result:
 
 ```python
 from datetime import datetime
