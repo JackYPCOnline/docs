@@ -24,7 +24,7 @@ Strands provides built-in session persistence capabilities that automatically ca
 Beyond the built-in options, [third-party session managers](#third-party-session-managers) provide additional storage and memory capabilities.
 
 !!! warning
-    You cannot use a single agent with session manager in a multi-agent system. This will throw an exception. Each agent in a multi-agent system must be created without a session manager, and only the orchestrator should have the session manager. Additionally, multi-agent session managers only track the current state of the Graph/Swarm execution and do not persist individual agent conversation histories. 
+    **(Python only)** You cannot use a single agent with session manager in a multi-agent system. This will throw an exception. Each agent in a multi-agent system must be created without a session manager, and only the orchestrator should have the session manager. Additionally, multi-agent session managers only track the current state of the Graph/Swarm execution and do not persist individual agent conversation histories.
 
 ## Basic Usage
 
@@ -71,26 +71,30 @@ The conversation, and associated state, is persisted to the underlying filesyste
 
 Multi-agent systems(Graph/Swarm) can also use session management to persist their state:
 
-```python
-from strands.multiagent import Graph
-from strands.session.file_session_manager import FileSessionManager
+=== "Python"
 
-# Create agents
-agent1 = Agent(name="researcher")
-agent2 = Agent(name="writer")
+    ```python
+    from strands.multiagent import Graph
+    from strands.session.file_session_manager import FileSessionManager
 
-# Create a session manager for the graph
-session_manager = FileSessionManager(session_id="multi-agent-session")
+    # Create agents
+    agent1 = Agent(name="researcher")
+    agent2 = Agent(name="writer")
 
-# Create graph with session management
-graph = Graph(
-    agents={"researcher": agent1, "writer": agent2},
-    session_manager=session_manager
-)
+    # Create a session manager for the graph
+    session_manager = FileSessionManager(session_id="multi-agent-session")
 
-# Use the graph - all orchestrator state is persisted
-result = graph("Research and write about AI")
-```
+    # Create graph with session management
+    graph = Graph(
+        agents={"researcher": agent1, "writer": agent2},
+        session_manager=session_manager
+    )
+
+    # Use the graph - all orchestrator state is persisted
+    result = graph("Research and write about AI")
+    ```
+
+{{ ts_not_supported_code("Multi-agent session management is not yet supported in the TypeScript SDK.") }}
 
 ## Built-in Session Managers
 
@@ -378,7 +382,7 @@ Here's a sample IAM policy that grants these permissions for a specific bucket:
     There are two kinds of snapshots:
 
     - **`snapshot_latest`**: A single mutable snapshot overwritten on every save. Used for crash recovery and resuming the most recent session.
-    - **Immutable snapshots**: Numbered snapshots (`snapshot_00001.json`, `snapshot_00002.json`, …) written to `immutable_history/`. Once written, they are never overwritten. Snapshot IDs start at `1`; ID `0` is reserved for `snapshot_latest`.
+    - **History snapshots**: Numbered snapshots (`snapshot_00001.json`, `snapshot_00002.json`, …) written to `immutable_history/`. Snapshot IDs start at `1`; ID `0` is reserved for `snapshot_latest`. Within a single linear session these snapshots are never overwritten, but restoring from a past snapshot via `loadSnapshotId` and continuing will overwrite any history beyond that point — effectively branching the timeline.
 
     ### Persistence Triggers
 
@@ -396,9 +400,9 @@ Here's a sample IAM policy that grants these permissions for a specific bucket:
     | `'invocation'` | After every agent invocation completes |
     | `'never'` | Only when a `snapshotTrigger` fires |
 
-    ### Immutable Snapshots with `snapshotTrigger`
+    ### History Snapshots with `snapshotTrigger`
 
-    The `snapshotTrigger` callback is evaluated after every invocation. When it returns `true`, an immutable snapshot is written to history and `snapshot_latest` is also updated atomically:
+    The `snapshotTrigger` callback is evaluated after every invocation. When it returns `true`, a history snapshot is written and `snapshot_latest` is also updated atomically:
 
     ```typescript
     import { Agent, SessionManager } from '@strands-agents/sdk'
@@ -429,7 +433,9 @@ Here's a sample IAM policy that grants these permissions for a specific bucket:
 
     ### Restoring from a Specific Snapshot
 
-    To resume from a specific immutable snapshot, pass `loadSnapshotId` to `SessionManager`. The manifest is automatically advanced so new snapshots continue from the correct ID:
+    To resume from a specific immutable snapshot, pass `loadSnapshotId` to `SessionManager`. The manifest is automatically advanced to `loadSnapshotId + 1`, so new snapshots continue from that point. Any immutable snapshots with IDs greater than `loadSnapshotId` will be overwritten by subsequent saves — this is a destructive branch, not a copy.
+
+    !!! warning "Restoring from a snapshot and continuing the session will overwrite immutable snapshots that existed beyond that point."
 
     ```typescript
     import { Agent, SessionManager, S3Storage } from '@strands-agents/sdk'
